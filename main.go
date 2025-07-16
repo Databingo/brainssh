@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/sha256"
-	//"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -15,12 +14,6 @@ import (
 	"github.com/mikesmitty/edkey"
 )
 
-
-// GeneratePrivateKey generates a private key using SHA256 on the given passphrase
-func GeneratePrivateKey(passphrase string) []byte {
-	hash := sha256.Sum256([]byte(passphrase))
-	return hash[:]
-}
 
 // GenerateEd25519 key
 func GenerateEd25519Key(passphrase string) ed25519.PrivateKey {
@@ -41,7 +34,6 @@ func main() {
 
 	// Generate private key
 	privateKey := GenerateEd25519Key(passphrase)
-	//publicKey, privateKey, _ := ed25519.GenerateKey(passphrase)  
 	fmt.Printf("Private Key (hex): %s\n", hex.EncodeToString(privateKey))
 
 	// Generate public key
@@ -49,20 +41,6 @@ func main() {
 	publicKey, _ := ssh.NewPublicKey(pubKey)
 
 	//fmt.Printf("Public key (hex): %s\n", hex.EncodeToString(publicKey))
-
-	// ssh format public key
-	//sshPublicKey, _ := ssh.NewPublicKey(publicKey)
-	//fmt.Printf("SSH Public Key (hex): %s\n", hex.EncodeToString(sshPublicKey.Marshal()))
-	//publicKeyBytes := ssh.MarshalAuthorizedKey(sshPublicKey)
-
-	// save key pair to files
-	currentUser, _ := user.Current()
-	homeDir := currentUser.HomeDir
-	pri := filepath.Join(homeDir, ".ssh", "id_ed25519")
-	pub := filepath.Join(homeDir, ".ssh", "id_ed25519.pub")
-
-	fmt.Println("pri (OpenSSH format):", pri)
-	fmt.Println("pub:", pub)
 
 	// Marshal the private key to OpenSSH format using edkey and wrap in PEM
 	pemKey := &pem.Block{
@@ -72,6 +50,13 @@ func main() {
 	privateKeyPEM := pem.EncodeToMemory(pemKey)
 	publicKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
 
+	// save key pair to files
+	currentUser, _ := user.Current()
+	homeDir := currentUser.HomeDir
+	pri := filepath.Join(homeDir, ".ssh", "id_ed25519")
+	pub := filepath.Join(homeDir, ".ssh", "id_ed25519.pub")
+	fmt.Println("pri (OpenSSH format):", pri)
+	fmt.Println("pub:", pub)
 	os.WriteFile(pri, privateKeyPEM, 0600)
 	os.WriteFile(pub, publicKeyBytes, 0644)
 	fmt.Println("\nYou can now add the public key to GitHub and use the private key for SSH authentication.")
