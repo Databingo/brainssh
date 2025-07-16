@@ -8,12 +8,9 @@ import (
 	"encoding/hex"
 	"encoding/binary"
 	"fmt"
-	//"log"
 	"os"
 
 	"golang.org/x/crypto/ssh"
-	//"github.com/mikesm_org/ed25519-pkcs8"
-	//"golang.org/x/term"
 )
 
 
@@ -24,9 +21,9 @@ func GeneratePrivateKey(passphrase string) []byte {
 }
 
 // GenerateEd25519 key
-func GenerateEd25519Key(passphrase string) []byte {
-	hash := ed25519.NewKeyFromSeed([]byte(passphrase))
-	return hash[:]
+func GenerateEd25519Key(passphrase string) ed25519.PrivateKey {
+	hash := sha256.Sum256([]byte(passphrase))
+	return ed25519.NewKeyFromSeed(hash[:])
 }
 
 
@@ -41,22 +38,22 @@ func main() {
 	}
 
 	// Generate private key
-	privateKey := GeneratePrivateKey(passphrase)
-	privateKey  = GenerateEd25519Key(string(privateKey))
+	//privateKey := GeneratePrivateKey(passphrase)
+	privateKey := GenerateEd25519Key(passphrase)
 	fmt.Printf("Private Key (hex): %s\n", hex.EncodeToString(privateKey))
 
 	// Generate public key
-	publicKey, _ := privateKey.Public().(ed25519.PublicKey)  
+	publicKey := privateKey.Public().(ed25519.PublicKey)
 	fmt.Printf("Public key (hex): %s\n", hex.EncodeToString(publicKey))
 
-	// ssh format public key
+	//// ssh format public key
 	sshPublicKey, _ := ssh.NewPublicKey(publicKey)
-	fmt.Printf("SSH Public Key (hex): %s\n", hex.EncodeToString(sshPublicKey))
+	fmt.Printf("SSH Public Key (hex): %s\n", hex.EncodeToString(sshPublicKey.Marshal()))
 	publicKeyBytes := ssh.MarshalAuthorizedKey(sshPublicKey)
 
 
 	// ssh format private key
-	pemBlock, _ :=  marshalOpenSSHPrivateKey(privateKey, ""+time.Now().Format("2006-01-02"))
+	pemBlock, _ :=  marshalOpenSSHPrivateKey(privateKey)
 
 	// save key pair to files
 	pri := "key_ssh"
