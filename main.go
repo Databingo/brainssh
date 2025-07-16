@@ -1,16 +1,19 @@
 package main
 
 import (
-	"crypto/rand"
+	//"crypto/rand"
 	"crypto/sha256"
 	"crypto/ed25519"
 	"encoding/pem"
 	"encoding/hex"
-	"encoding/binary"
+	"crypto/x509"
 	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
 
 	"golang.org/x/crypto/ssh"
+	"github.com/ScaleFT/sshkeys"
 )
 
 
@@ -38,7 +41,6 @@ func main() {
 	}
 
 	// Generate private key
-	//privateKey := GeneratePrivateKey(passphrase)
 	privateKey := GenerateEd25519Key(passphrase)
 	fmt.Printf("Private Key (hex): %s\n", hex.EncodeToString(privateKey))
 
@@ -51,100 +53,21 @@ func main() {
 	fmt.Printf("SSH Public Key (hex): %s\n", hex.EncodeToString(sshPublicKey.Marshal()))
 	publicKeyBytes := ssh.MarshalAuthorizedKey(sshPublicKey)
 
-
-	// ssh format private key
-	pemBlock, _ :=  marshalOpenSSHPrivateKey(privateKey)
-
 	// save key pair to files
-	pri := "key_ssh"
-	pub := "key_ssh.pub"
-
-	os.WriteFile(pri, pem.EncodeToMemory(pemBlock), 0600)
-	os.WriteFile(pub, publicKeyBytes, 0644)
+	currentUser, _ := user.Current()
+	homeDir := currentUser.HomeDir
+	pri := filepath.Join(homeDir, ".ssh", "id_ed25519")
+	pub := filepath.Join(homeDir, ".ssh", "id_ed25519.pub")
 
 	fmt.Println("pri:", pri)
 	fmt.Println("pub:", pub)
-	config := `
-	Host github.com
-	  HostName github.com
-	  User git
-	  IdentityFile ~/.ssh/key_ssh
-	`
-	fmt.Println("~/.ssh/config:", config)
-}
 
-
-func marshalOpenSSHPrivateKey(key ed25519.PrivateKey) (*pem.Block, error){
-	// The block type for modern OpenSSH keys
-	blockType := "OPENSSH PRIVATE KEY"
-
-	// The OpenSSH private key format is a custom binary format.
-	// We build it piece by piece.
-	// See: https://github.com/openssh/openssh-portable/blob/master/PROTOCOL.key
-	
-	// A random "checkint"
-	var checkint uint32
-	if err := binary.Read(rand.Reader, binary.BigEndian, &checkint); err != nil {
-		return nil, err
-	}
-	
-	// The binary payload
-	var w struct {
-		CipherName   string
-		KdfName      string
-		KdfOpts      string
-		NumKeys      uint32
-		PubKey       []byte
-		PrivKeyBlock []byte
-	}
-	w.CipherName = "none"
-	w.KdfName = "none"
-	w.KdfOpts = ""
-	w.NumKeys = 1
-
-	// Public key part
-	pk1, err := ssh.NewPublicKey(key.Public())
+	// Marshal the private key to OpenSSH format using sshkeys
+	privBytes, err := sshkeys.MarshalED25519PrivateKey(privateKey, "")
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	w.PubKey = pk1.Marshal()
-
-	// Private key part
-	var pk2 struct {
-		Check1  uint32
-		Check2  uint32
-		Keytype string
-		Pub     []byte
-		Priv    []byte
-		Comment string
-		Pad     []byte
-	}
-	pk2.Check1 = checkint
-	pk2.Check2 = checkint
-	pk2.Keytype = ssh.KeyAlgoED25519
-	pk2.Pub = key.Public().(ed25519.PublicKey)
-	pk2.Priv = key
-	pk2.Comment = ""
-	
-	// Padding
-	blockLen := len(ssh.Marshal(pk2))
-	padLen := (8 - (blockLen % 8)) % 8
-	pk2.Pad = make([]byte, padLen)
-	for i := 0; i < padLen; i++ {
-		pk2.Pad[i] = byte(i + 1)
-	}
-	
-	w.PrivKeyBlock = ssh.Marshal(pk2)
-
-	// Final assembly
-	magic := []byte("openssh-key-v1\x00")
-	magic = append(magic, ssh.Marshal(w)...)
-	
-	pemBlock := &pem.Block{
-		Type:  blockType,
-		Bytes: magic,
-	}
-
-	return pemBlock, nil
+	os.WriteFile(pri, privBytes, 0600)
+	os.WriteFile(pub, publicKeyBytes, 0644)
 }
 
