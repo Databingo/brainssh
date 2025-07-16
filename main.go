@@ -1,19 +1,18 @@
 package main
 
 import (
-	//"crypto/rand"
 	"crypto/sha256"
-	"crypto/ed25519"
-	"encoding/pem"
+	//"crypto/ed25519"
 	"encoding/hex"
-	"crypto/x509"
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
+	"encoding/pem"
 
 	"golang.org/x/crypto/ssh"
-	"github.com/ScaleFT/sshkeys"
+	"golang.org/x/crypto/ed25519"
+	"github.com/mikesmitty/edkey"
 )
 
 
@@ -42,16 +41,19 @@ func main() {
 
 	// Generate private key
 	privateKey := GenerateEd25519Key(passphrase)
+	//publicKey, privateKey, _ := ed25519.GenerateKey(passphrase)  
 	fmt.Printf("Private Key (hex): %s\n", hex.EncodeToString(privateKey))
 
 	// Generate public key
-	publicKey := privateKey.Public().(ed25519.PublicKey)
-	fmt.Printf("Public key (hex): %s\n", hex.EncodeToString(publicKey))
+	pubKey := privateKey.Public().(ed25519.PublicKey)
+	publicKey, _ := ssh.NewPublicKey(pubKey)
 
-	//// ssh format public key
-	sshPublicKey, _ := ssh.NewPublicKey(publicKey)
-	fmt.Printf("SSH Public Key (hex): %s\n", hex.EncodeToString(sshPublicKey.Marshal()))
-	publicKeyBytes := ssh.MarshalAuthorizedKey(sshPublicKey)
+	//fmt.Printf("Public key (hex): %s\n", hex.EncodeToString(publicKey))
+
+	// ssh format public key
+	//sshPublicKey, _ := ssh.NewPublicKey(publicKey)
+	//fmt.Printf("SSH Public Key (hex): %s\n", hex.EncodeToString(sshPublicKey.Marshal()))
+	//publicKeyBytes := ssh.MarshalAuthorizedKey(sshPublicKey)
 
 	// save key pair to files
 	currentUser, _ := user.Current()
@@ -59,15 +61,19 @@ func main() {
 	pri := filepath.Join(homeDir, ".ssh", "id_ed25519")
 	pub := filepath.Join(homeDir, ".ssh", "id_ed25519.pub")
 
-	fmt.Println("pri:", pri)
+	fmt.Println("pri (OpenSSH format):", pri)
 	fmt.Println("pub:", pub)
 
-	// Marshal the private key to OpenSSH format using sshkeys
-	privBytes, err := sshkeys.MarshalED25519PrivateKey(privateKey, "")
-	if err != nil {
-		panic(err)
+	// Marshal the private key to OpenSSH format using edkey and wrap in PEM
+	pemKey := &pem.Block{
+		Type:  "OPENSSH PRIVATE KEY",
+		Bytes: edkey.MarshalED25519PrivateKey(privateKey),
 	}
-	os.WriteFile(pri, privBytes, 0600)
+	privateKeyPEM := pem.EncodeToMemory(pemKey)
+	publicKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
+
+	os.WriteFile(pri, privateKeyPEM, 0600)
 	os.WriteFile(pub, publicKeyBytes, 0644)
+	fmt.Println("\nYou can now add the public key to GitHub and use the private key for SSH authentication.")
 }
 
