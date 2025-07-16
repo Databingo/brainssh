@@ -55,10 +55,19 @@ func main() {
 	homeDir := currentUser.HomeDir
 	pri := filepath.Join(homeDir, ".ssh", "id_ed25519")
 	pub := filepath.Join(homeDir, ".ssh", "id_ed25519.pub")
+	conf := filepath.Join(homeDir, ".ssh", "config")
+	config := []byte(`
+Host github.com
+ Hostname ssh.github.com
+ Port 443
+ User git
+ `)
+
 	fmt.Println("pri (OpenSSH format):", pri)
 	fmt.Println("pub:", pub)
 	os.WriteFile(pri, privateKeyPEM, 0600)
 	os.WriteFile(pub, publicKeyBytes, 0644)
+	os.WriteFile(conf, config, 0644)
 	fmt.Println("\nYou can now add the public key to GitHub and use the private key for SSH authentication.")
 }
 // add pubkey to github
