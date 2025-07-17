@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"os/user"
+	//"os/user"
 	"path/filepath"
 	"encoding/pem"
 
@@ -51,8 +51,9 @@ func main() {
 	publicKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
 
 	// save key pair to files
-	currentUser, _ := user.Current()
-	homeDir := currentUser.HomeDir
+	//currentUser, _ := user.Current()
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" { homeDir = "/root"}
 	pri := filepath.Join(homeDir, ".ssh", "id_ed25519")
 	pub := filepath.Join(homeDir, ".ssh", "id_ed25519.pub")
 	conf := filepath.Join(homeDir, ".ssh", "config")
