@@ -71,6 +71,6 @@ func main() {
 	//os.WriteFile(conf, config, 0644)
 	fmt.Println("\nYou can now add the public key to GitHub and use the private key for SSH authentication.")
 }
-// add pubkey to github
-// ssh -T -p 443 git@ssh.github.com
+// 1.add pubkey to github
+// 2.test: ssh -T -p 443 git@ssh.github.com
 
