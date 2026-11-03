@@ -68,4 +68,6 @@ func main() {
 }
 // 1.add pubkey to github
 // 2.test: ssh -T -p 443 git@ssh.github.com
+// 3.delete: rm -f ~/.ssh/id_ed21559_* && ssh-add -D
+
 
