@@ -54,8 +54,11 @@ func main() {
 	//currentUser, _ := user.Current()
 	homeDir := os.Getenv("HOME")
 	if homeDir == "" { homeDir = "/root"}
-	pri := filepath.Join(homeDir, ".ssh", "id_ed25519")
-	pub := filepath.Join(homeDir, ".ssh", "id_ed25519.pub")
+	//pri := filepath.Join(homeDir, ".ssh", "id_ed25519")
+	//pub := filepath.Join(homeDir, ".ssh", "id_ed25519.pub")
+	keyName := "id_ed25519_" + hex.EncodeToString(pubKey[:4])
+	pri := filepath.Join(homeDir, ".ssh", keyName)
+	pub := filepath.Join(homeDir, ".ssh", keyName + ".pub")
 //	conf := filepath.Join(homeDir, ".ssh", "config")
 //	config := []byte(`
 //Host github.com
