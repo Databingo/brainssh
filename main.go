@@ -1,34 +1,36 @@
 package main
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/pem"
 	"fmt"
 	"os"
-	//"os/user"
 	"path/filepath"
-	"encoding/pem"
+	"strings"
 
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ed25519"
 	"github.com/mikesmitty/edkey"
+	"golang.org/x/crypto/ed25519"
+	"golang.org/x/crypto/ssh"
 )
 
-
-// GenerateEd25519 key
+// GenerateEd25519 key (完全保持你的原逻辑)
 func GenerateEd25519Key(passphrase string) ed25519.PrivateKey {
 	hash := sha256.Sum256([]byte(passphrase))
 	return ed25519.NewKeyFromSeed(hash[:])
 }
 
-
 func main() {
-	// Input passphrase
-	fmt.Print("Enter a passphrase for your brain ssh, make sure it's easy to remember but hard for other to guess: ")
-	var passphrase string
-	fmt.Scanln(&passphrase)
+	fmt.Print("Enter a passphrase for your brain ssh (spaces allowed) pure ascii: ")
+
+	// 【修复空格】：使用 bufio 读取整行，支持任意空格
+	reader := bufio.NewReader(os.Stdin)
+	passphrase, _ := reader.ReadString('\n')
+	passphrase = strings.TrimRight(passphrase, "\r\n")
+
 	if len(passphrase) < 32 {
-		fmt.Println("Too short, at least 32 characters please")
+		fmt.Printf("Too short (current length: %d), at least 32 characters please\n", len(passphrase))
 		os.Exit(1)
 	}
 
@@ -40,8 +42,6 @@ func main() {
 	pubKey := privateKey.Public().(ed25519.PublicKey)
 	publicKey, _ := ssh.NewPublicKey(pubKey)
 
-	//fmt.Printf("Public key (hex): %s\n", hex.EncodeToString(publicKey))
-
 	// Marshal the private key to OpenSSH format using edkey and wrap in PEM
 	pemKey := &pem.Block{
 		Type:  "OPENSSH PRIVATE KEY",
@@ -50,28 +50,20 @@ func main() {
 	privateKeyPEM := pem.EncodeToMemory(pemKey)
 	publicKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
 
-	// save key pair to files
-	//currentUser, _ := user.Current()
 	homeDir := os.Getenv("HOME")
-	if homeDir == "" { homeDir = "/root"}
-	//pri := filepath.Join(homeDir, ".ssh", "id_ed25519")
-	//pub := filepath.Join(homeDir, ".ssh", "id_ed25519.pub")
+	if homeDir == "" {
+		homeDir = "/root"
+	}
+
 	keyName := "id_ed25519_" + hex.EncodeToString(pubKey[:4])
 	pri := filepath.Join(homeDir, ".ssh", keyName)
-	pub := filepath.Join(homeDir, ".ssh", keyName + ".pub")
-//	conf := filepath.Join(homeDir, ".ssh", "config")
-//	config := []byte(`
-//Host github.com
-// Hostname ssh.github.com
-// Port 443
-// User git
-// `)
+	pub := filepath.Join(homeDir, ".ssh", keyName+".pub")
 
 	fmt.Println("pri (OpenSSH format):", pri)
 	fmt.Println("pub:", pub)
 	os.WriteFile(pri, privateKeyPEM, 0600)
 	os.WriteFile(pub, publicKeyBytes, 0644)
-	//os.WriteFile(conf, config, 0644)
+
 	fmt.Println("\nYou can now add the public key to GitHub and use the private key for SSH authentication.")
 }
 // 1.add pubkey to github
